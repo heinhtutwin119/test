@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Player</title>
+    <style>
+        /* Defining a globally accessible default fall-back duration value variable property */
+        :root {
+            --duration: 120s;
+        }
+
+        .container {
+            width: 200px;
+            height: 290px; 
+            border: 5px solid rgb(110, 31, 31);
+            background-color: rgb(158, 54, 54);
+            padding: 40px 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: sans-serif;
+            color: #fff;
+        }
+
+        .container .play {
+            width: 128px;
+            height: 128px;
+            background-image: url(photo/music3.png);
+            background-size: cover;
+            margin: 0 auto 15px auto;
+            /* Linked dynamically to the duration variable property configuration value */
+            transition: transform var(--duration) linear; 
+        }
+
+        .track-info {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-align: center;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .time-display {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 15px;
+        }
+        
+        .img-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .img-container img {
+            cursor: pointer;
+            width: 24px; 
+            height: 24px;
+        }
+
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .volume-container span {
+            font-size: 12px;
+        }
+
+        .volume-container input[type="range"] {
+            flex: 1;
+            cursor: pointer;
+            accent-color: rgb(110, 31, 31);
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="container">
+        <div class="play" id="dc"></div>
+
+        <div class="track-info" id="track-name">Loading Track...</div>
+        <div class="time-display" id="track-time">0:00 / 0:00</div>
+        
+        <div class="img-container">
+            <img src="photo/rewind.png" alt="Reverse" id="prev-btn">
+            <a href="#" id="toggle-link">
+                <img src="photo/play (2).png" alt="Play" id="start">
+            </a>
+            <img src="photo/forward.png" alt="Skip" id="next-btn">
+        </div>
+
+        <div class="volume-container">
+            <span>🔈</span>
+            <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.7">
+            <span>🔊</span>
+        </div>
+    </div>
+
+    <audio id="bg-audio"></audio>
+
+</body>
+
+<script>
+    const playlist = [
+        { name: "Treat You Better - Shawn Mendes", src: "photo/Treat You Better - Shawn Mendes.m4a" },
+        { name: "Ed Sheeran - Perfect", src: "photo/Ed Sheeran - Perfect.m4a" },
+        { name: "Song Title Three", src: "audio/track3.mp3" }
+    ];
+
+    let currentTrackIndex = 0;
+    let isPlaying = false;
+
+    const startBtn = document.querySelector("#start");
+    const dcDisc = document.querySelector("#dc");
+    const audioTrack = document.querySelector("#bg-audio");
+    const trackNameDisplay = document.querySelector("#track-name");
+    const trackTimeDisplay = document.querySelector("#track-time");
+    const volumeSlider = document.querySelector("#volume-slider");
+    const prevBtn = document.querySelector("#prev-btn");
+    const nextBtn = document.querySelector("#next-btn");
+
+    function loadTrack(index) {
+        audioTrack.src = playlist[index].src;
+        trackNameDisplay.textContent = playlist[index].name;
+        audioTrack.load();
+        
+        // Ensure rotation is reset back down smoothly during a track transition changeover
+        dcDisc.style.transition = "none";
+        dcDisc.style.transform = "rotate(0deg)";
+        // Force rendering reflow layout calculations check step
+        dcDisc.offsetHeight; 
+        
+        trackTimeDisplay.textContent = "0:00 / 0:00";
+    }
+
+    // Listens for metadata to load to capture the audio file's exact total playtime duration 
+    audioTrack.onloadedmetadata = function() {
+        const songDuration = audioTrack.duration;
+        // Inject the audio duration in seconds into our CSS variable configuration properties setup
+        document.documentElement.style.setProperty('--duration', songDuration + 's');
+        
+        // Re-apply transition styles configuration properties setup
+        dcDisc.style.transition = `transform ${songDuration}s linear`;
+    };
+
+    document.querySelector("#toggle-link").onclick = function(e) {
+        e.preventDefault(); 
+        if (!isPlaying) {
+            open();
+        } else {
+            stop();
+        }
+    };
+
+    function open() {
+        startBtn.src = "photo/stop.png"; 
+        /* Changes rotation boundary targets up to 3600deg */
+        dcDisc.style.transform = "rotate(3600deg)";
+        audioTrack.play().catch(err => console.log("Playback error: ", err));
+        isPlaying = true;
+    }
+
+    function stop() {
+        startBtn.src = "photo/play (2).png";
+        dcDisc.style.transform = "rotate(0deg)";
+        audioTrack.pause();
+        isPlaying = false;
+    }
+
+    prevBtn.onclick = function() {
+        currentTrackIndex--;
+        if (currentTrackIndex < 0) {
+            currentTrackIndex = playlist.length - 1;
+        }
+        loadTrack(currentTrackIndex);
+        if (isPlaying) open();
+    };
+
+    nextBtn.onclick = function() {
+        currentTrackIndex++;
+        if (currentTrackIndex >= playlist.length) {
+            currentTrackIndex = 0;
+        }
+        loadTrack(currentTrackIndex);
+        if (isPlaying) open();
+    };
+
+    audioTrack.onended = function() {
+        nextBtn.click();
+    };
+
+    audioTrack.ontimeupdate = function() {
+        if (!audioTrack.duration) return;
+        const currentMin = Math.floor(audioTrack.currentTime / 60);
+        const currentSec = Math.floor(audioTrack.currentTime % 60).toString().padStart(2, '0');
+        const durationMin = Math.floor(audioTrack.duration / 60);
+        const durationSec = Math.floor(audioTrack.duration % 60).toString().padStart(2, '0');
+        
+        trackTimeDisplay.textContent = `${currentMin}:${currentSec} / ${durationMin}:${durationSec}`;
+    };
+
+    volumeSlider.oninput = function() {
+        audioTrack.volume = volumeSlider.value;
+    };
+
+    audioTrack.volume = volumeSlider.value;
+    loadTrack(currentTrackIndex);
+</script>
+</html>
